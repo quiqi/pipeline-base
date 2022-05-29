@@ -54,7 +54,7 @@ if __name__ == '__main__':
 ​		这时，如果有一个工具让修改代码的过程变得像修改流程图一样清晰明了，或许能大大方便我们的编程。 Pipeline就是一个这样的后端框架，它支持模块化开发，支持多进程，对团队合作友好，非常适合一些流式处理程序的开发。总之，如果用pipeline来编写《镜子1.0》是这样的：
 
 ```python
-# 代码2：用piple实现镜子
+# 代码2：用piple实现镜子,完整代码在 code0.2.py 中
 if __name__ == '__main__':
     mirror = NodeSet([		# 实例化一个名为 'mirror' 的任务，该任务有三个节点：
         # Node(节点名称，后继节点，节点功能)
@@ -67,12 +67,12 @@ if __name__ == '__main__':
         mirror.run(Frame(end='node1'))
 ```
 
-​		我们可以很轻松的看出，以上代码是几乎就是 [图0.1]的文字版，即使我不进行任何说明，对照[图0.1] 大家也能很快明白这两者之间的关联，当然，`ReadCamera(), Flip(), ShowImg() ` 是需要自己编写的，如果大家熟悉了这种编程方式，并不会觉得这是一个麻烦的事情。 
+​		我们可以很轻松的看出，以上代码是几乎就是 [图0.1]的文字版，即使我不进行任何说明，对照[图0.1] 大家也能很快明白这两者之间的关联，当然，`ReadCamera(), Flip(), ShowImg() ` 是需要自己编写的，如果大家熟悉了这种编程方式，并不会觉得这是一个麻烦的事情。 我们将在 “2.1.3” 小节中给出具体的实现。
 
-​		在pipeline框架下，如果希望实现程序《镜子2.0》，我们只需要实现对应两个节点的功能，并修改mirror为：
+​		在pipeline框架下，如果希望实现程序《镜子2.0》，我们只需要实现对应两个节点的功能，并修改代码为 [代码0.2]，就能实现功能的添加：
 
 ```python
-# 该部分的全部源码在 项目中的 test2_mirror2.py 文件中。
+# 该部分的全部源码在 code0.2.py 中
 if __name__ == '__main__':
     mirror = NodeSet([
         Node('node1', subsequents=['node2'], worker=ReadCamera()),
@@ -301,7 +301,7 @@ fs = chart.run(frame)				# 运行一次该流程图
 
 
 
-#### 2.1.2 实现流程图的功能部分
+#### 2.1.3 实现流程图的功能部分
 
 ​		如果说`Node` 和 `NodeSet` 用于实现流程图的结构部分，管理数据帧(`Frame`) 的流动，那么 `Worker` 就是用于实现数据帧 `Frame` 的加工。在正式开始介绍 `Worker` 类之前，需要先更详细的了解 `Frame`类。
 
@@ -325,7 +325,8 @@ class Frame:
         self.cycle = cycle # 是否为循环帧，如果该cycle=True,lifetime不起作用
 ```
 
-<center>[代码2.5] Frame类的 __init__ 函数源码
+<center>[代码2.5-1] Frame类的 __init__ 函数源码
+
 
 ​		其中最常用的成员变量为 `data`，这是一个字典数据，当一个节点需要给其后继节点传递数据时，一般会将数据放在 `data` 中。
 
@@ -344,7 +345,8 @@ class Worker(Model):
    	... 省略部分代码
 ```
 
-<center>[代码2.5] Worker类的 process 函数源码
+<center>[代码2.5-2] Worker类的 process 函数源码
+
 
 ​		**用户可以继承 `Worker` 类，并重写 `process` 函数而实现具体的功能**，这么说可能有些抽象，让我们看具体的实例。
 
@@ -371,9 +373,10 @@ from pipeline.utils import *
 
 
 class ReadCamera(Worker):
-    '''
+    """
     从摄像头读取图片
-    '''
+    """
+
     def __init__(self, name: str = 'camera', url: str = 0):
         super().__init__(name)
         self.camera = cv2.VideoCapture(url)
@@ -388,9 +391,10 @@ class ReadCamera(Worker):
 
 
 class Flip(Worker):
-    '''
+    """
     将图片翻转
-    '''
+    """
+
     def __init__(self, name: str = 'flip'):
         super().__init__(name)
 
@@ -400,10 +404,12 @@ class Flip(Worker):
         # 返回修改后的帧
         return frame
 
+
 class ShowImg(Worker):
-    '''
+    """
     显示图片
-    '''
+    """
+
     def __init__(self, name: str = 'show_img'):
         super().__init__(name)
 
@@ -454,7 +460,8 @@ class ChalkEffects(Worker):
         return frame
 ```
 
-<center>[代码2.6] 实现粉笔画效果的Worker子类
+<center>[代码2.6+] 实现粉笔画效果的Worker子类
+
 
 ```python
 if __name__ == '__main__':
@@ -490,10 +497,9 @@ if __name__ == '__main__':
 ​		以上流程图会将节点2之后的所有数据帧保存到磁盘，对应代码如下：
 
 ```python
-# pipeline.utils 是pipeline的官方工具包
-import pipeline.utils as utils
-
 if __name__ == '__main__':
+    # pipeline.utils 是pipeline的官方工具包
+	import pipeline.utils as utils
     mirror = NodeSet([
         # 使用官方工具包中的 Source 组件作为起始组件
         Node('node0', subsequents=['node1'], worker=utils.Source())

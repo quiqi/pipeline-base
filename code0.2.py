@@ -47,8 +47,6 @@ class ShowImg(Worker):
 if __name__ == '__main__':
 
     mirror = NodeSet([
-        # 使用官方工具包中的 Source 组件作为起始组件
-        Node('node0', subsequents=['node1'], worker=utils.Source()),
         Node('node1', subsequents=['node2'], worker=ReadCamera()),
         Node('node2', subsequents=['node3', 'node5'], worker=Flip()),
         Node('node3', subsequents=['node4'], worker=ChalkEffects()),
@@ -58,4 +56,4 @@ if __name__ == '__main__':
     ])
 
     while mirror.switch:
-        fs = mirror.run(Frame(end='node0'))
+        fs = mirror.run(Frame(end='node1'))

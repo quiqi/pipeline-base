@@ -1,6 +1,17 @@
 import random
 import copy
 import collections
+import time
+
+
+def get_num():
+    num = 0
+    while True:
+        yield num
+        num += 1
+
+
+g = get_num()
 
 
 class Frame:
@@ -18,6 +29,10 @@ class Frame:
         self.itinerary = collections.deque()  # 行程计划
         self.lifetime = lifetime
         self.cycle = cycle
+
+        # 初始化信息
+        self.info['_TIME'] = time.time()
+        self.info['_NUMB'] = next(g)
 
     def send(self, start, end):  # send函数，用于设置该帧的流向
         if end is not None and '/' in end:  # 如果end包含分隔符，则认为这是一个路径，一般用于设置跨DotSet的跳转
@@ -283,7 +298,3 @@ class NodeSet(Node):
                 else:  # 否则加入 t_frames 继续处理
                     t_frames.append(frame)
         return finish
-
-
-
-

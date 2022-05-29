@@ -1,3 +1,4 @@
+README.md
 setup.py
 pipeline/__init__.py
 pipeline/core.py
