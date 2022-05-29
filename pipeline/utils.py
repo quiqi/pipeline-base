@@ -35,28 +35,31 @@ class Save(Worker):
         self.time_lag = time_lag * 60   # 分段间隔，默认为一小时
 
         self.save_info_path = os.path.join(self.save_path, 'save_info.txt')     # 索引文件地址
-        self.plf_name = time.strftime('%Y-%m-%d_%H-%M-%S', time.localtime()) + '.plf'     # plf文件名字
+        self.file_name = time.strftime('%Y-%m-%d_%H-%M-%S', time.localtime())     # plf文件名字
         self.last_time = time.time()    # 当下时间
 
         # 如果保存地址不存在，需要递归生成
         if not os.path.exists(self.save_path):
             os.makedirs(self.save_path)
 
-        # 将当前文件名 self.plf_name 保存到save_info.txt中：
+        # 将当前文件名 self.file_name 保存到save_info.txt中：
         with open(self.save_info_path, 'a') as f:
-            f.write(self.plf_name + '\n')
+            f.write(self.file_name + '\n')
 
     def process(self, frame: Frame):
         if time.time() - self.last_time > self.time_lag:    # 如果大于时间间隔
             self.last_time = time.time()    # 更新时间戳
-            self.plf_name = time.strftime('%Y-%m-%d_%H-%M-%S', time.localtime()) + '.plf'    # plf文件名字
-            # 将当前文件名 self.plf_name 保存到save_info.txt中：
+            self.file_name = time.strftime('%Y-%m-%d_%H-%M-%S', time.localtime())    # plf文件名字
+            # 将当前文件名 self.file_name 保存到save_info.txt中：
             with open(self.save_info_path, 'a') as f:
-                f.write(self.plf_name + '\n')
+                f.write(self.file_name + '\n')
 
         bf = pickle.dumps(frame)
-        with open(os.path.join(self.save_path, self.plf_name), 'a', encoding='utf-8') as f:
-            f.write(str(bf) + '\n')
+        len_bf = len(bf)
+        with open(os.path.join(self.save_path, self.file_name + '.plf'), 'ab') as f:
+            f.write(bf)
+        with open(os.path.join(self.save_path, self.file_name + '.len'), 'a') as f:
+            f.write(str(len_bf) + '\n')
         return frame
 
 
@@ -105,7 +108,7 @@ class Load(Worker):
                         print('can not find the {}, by default, data is read from the earliest'.format(start_from))
 
                 # 创建文件指针
-                self.fp = self.get_fp()
+                self.fp, self.flp = self.get_fp()
                 if self.fp is None:  # 如果文件指针为空
                     self.close = True
                     print('can not find any plf.'
@@ -114,6 +117,7 @@ class Load(Worker):
     def process(self, frame: Frame):
         if self.close:  # 如果初始化失败，则关闭
             frame.ctrl.append('_CLOSE')
+            self.switch = False
             return frame
 
         # 否则开始读取数据
@@ -122,6 +126,7 @@ class Load(Worker):
             t_frame = self.read_frame()
             if t_frame is None:     # 如果读取到空，表示读取完毕
                 frame.ctrl.append('_CLOSE')     # 发送结束帧
+                self.switch = False
                 return frame
             # 若不为空帧，则给frame赋值
             frame = t_frame
@@ -142,10 +147,12 @@ class Load(Worker):
         frame = None
         while frame is None:
             # 读取一行二进制
-            line = self.fp.readline()
-            if line:  # 如果读取成功
+            fb_len = self.flp.readline()    # 先读长度
+            if fb_len:  # 如果读取成功
+                fb_len = int(fb_len[:-1])  # 转为整型
+                fb = self.fp.read(fb_len)  # 读取fb
                 try:  # 尝试反序列化 line 为一个帧
-                    t_frame = pickle.loads(eval(line))
+                    t_frame = pickle.loads(fb)
                     # 确定帧类型后将 t_frame 赋值给 frame
                     if isinstance(t_frame, Frame):
                         frame = t_frame
@@ -154,22 +161,24 @@ class Load(Worker):
                     print(e)
                     print('The current frame fails to read and the next frame is automatically read')
             else:   # 如果读取失败
-                self.fp = self.get_fp()
+                self.fp, self.flp = self.get_fp()
                 if self.fp is None:
                     return None     # 返回None表示读取失败且没有找到新的文件
 
     def get_fp(self):
         fp = None  # 文件指针
+        flp = None
         while self.data_path_p < len(self.data_path):
             t_path = os.path.join(self.load_path, self.data_path[self.data_path_p])
-            if os.path.exists(t_path):
-                fp = open(t_path, 'r')
+            if os.path.exists(t_path + '.plf') and os.path.exists(t_path + '.len'):
+                fp = open(t_path + '.plf', 'rb')
+                flp = open(t_path + '.len', 'r')
                 self.data_path_p += 1
-                return fp   # 读取成功返回 fp
+                return fp, flp   # 读取成功返回 fp
             else:
                 print('can not find the plf:{}, the next plf will be read automatically'.format(t_path))
                 self.data_path_p += 1  # 更新文件指针
-        return fp
+        return fp, flp
 
 
 class PrintData(Worker):

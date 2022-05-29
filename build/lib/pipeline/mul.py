@@ -21,7 +21,7 @@ class MulSource(pipeline.utils.Source):
 class MulIgnition:
     def __init__(self, dots: typing.List[pipeline.core.Node], queue_size: int = 10):
         if len(dots) == 0:
-            raise Exception('Please include at least one dot in dots')
+            raise Exception('Please include at least one dot in nodes')
 
         self.pipes = {}
         self.process_list = {}

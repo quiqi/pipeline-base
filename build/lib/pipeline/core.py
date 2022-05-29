@@ -204,6 +204,10 @@ class Node(Model):
     def process(self, frame: Frame):
         if self.worker is not None:  # 如果Dot被指定工作，则执行worker的run
             frame = self.worker.run(frame)
+            # 控制信息处理
+            for c in frame.ctrl:
+                if c == '_CLOSE':  # 如果在控制信息中出现 _CLOSE 就关闭当前 Node，但仍会执行完下面的部分
+                    self.switch = False
 
         if len(self.subsequents) != 0:  # 如果有后继节点，则调用send函数发送
             frames = self.send(frame)
@@ -247,19 +251,19 @@ class NodeSet(Node):
         :param subsequents: 后继节点
         """
         super().__init__(dots[0].name, subsequents)
-        self.dots = {}
+        self.nodes = {}
         ex1 = Exception('elements in workers have to the Worker!')
         ex2 = Exception('can not have two dot with the same name!')
         for dot in dots:
             if not isinstance(dot, Node):  # 检查dots中的每一个元素是否都是Dot类的对象
                 raise ex1
-            if dot.name in self.dots.keys():  # 检查是否有重名的 Node 对象
+            if dot.name in self.nodes.keys():  # 检查是否有重名的 Node 对象
                 raise ex2
-            self.dots[dot.name] = dot  # 将dot字典化，加快查找速度
+            self.nodes[dot.name] = dot  # 将dot字典化，加快查找速度
 
         # 如果source不为空
         if source is not None:
-            if source in self.dots.keys():
+            if source in self.nodes.keys():
                 self.source = source
             else:
                 self.source = self.name
@@ -277,19 +281,13 @@ class NodeSet(Node):
         t_frames.append(frame)  # 将传入帧放入队列
         while not len(t_frames) == 0:  # 若帧队列中还有待处理的帧
             frame = t_frames.popleft()  # 取出一个待处理的帧
-
-            # 控制信息处理
-            for c in frame.ctrl:
-                if c == '_CLOSE':  # 如果在控制信息中出现 _CLOSE 就关闭当前 NodeSet，但仍会执行完下面的部分
-                    self.switch = False
-
-                    # 如果当前需要发送的节点没有在DotSet中，则将该节点放入 finish中
-            if frame.end not in self.dots.keys():
+            # 如果当前需要发送的节点没有在DotSet中，则将该节点放入 finish中
+            if frame.end not in self.nodes.keys():
                 finish.append(frame)
                 continue
 
             # 将当前帧放入指定节点中运行
-            frames = self.dots[frame.end].run(frame)
+            frames = self.nodes[frame.end].run(frame)
             for frame in frames:  # 对得到的帧进行处理
                 if frame is None:  # 过滤掉None（一般不会出现None）
                     continue
@@ -297,4 +295,9 @@ class NodeSet(Node):
                     finish.append(frame)
                 else:  # 否则加入 t_frames 继续处理
                     t_frames.append(frame)
+        # 检查源头节点是否还在工作：
+        self.switch = False
+        for k in self.nodes:
+            if self.nodes[k].switch:
+                self.switch = True
         return finish
