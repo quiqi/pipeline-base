@@ -33,23 +33,19 @@ class Save(Worker):
 
         self.save_path = save_path      # 保存路径
         self.time_lag = time_lag * 60   # 分段间隔，默认为一小时
+        self.first = True
 
-        self.save_info_path = os.path.join(self.save_path, 'save_info.txt')     # 索引文件地址
-        self.file_name = time.strftime('%Y-%m-%d_%H-%M-%S', time.localtime())     # plf文件名字
-        self.last_time = time.time()    # 当下时间
-
-        # 如果保存地址不存在，需要递归生成
+        self.save_info_path = None     # 索引文件地址
+        self.file_name = None     # plf文件名字
+        self.last_time = time.time() - self.time_lag - 1    # 当下时间
         if not os.path.exists(self.save_path):
             os.makedirs(self.save_path)
 
-        # 将当前文件名 self.file_name 保存到save_info.txt中：
-        with open(self.save_info_path, 'a') as f:
-            f.write(self.file_name + '\n')
-
     def process(self, frame: Frame):
-        if time.time() - self.last_time > self.time_lag:    # 如果大于时间间隔
+        if time.time() - self.last_time >= self.time_lag or self.file_name is None:    # 如果大于时间间隔
             self.last_time = time.time()    # 更新时间戳
             self.file_name = time.strftime('%Y-%m-%d_%H-%M-%S', time.localtime())    # plf文件名字
+            self.save_info_path = os.path.join(self.save_path, 'save_info.txt')
             # 将当前文件名 self.file_name 保存到save_info.txt中：
             with open(self.save_info_path, 'a') as f:
                 f.write(self.file_name + '\n')
