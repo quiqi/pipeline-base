@@ -55,6 +55,20 @@ class Frame:
                 self.end = None
 
 
+class OrderFrame(Frame):
+    """
+    命令帧，用于传达命令
+    """
+    def __init__(self, order_head: str, order_args, start, order_obj):
+        super().__init__()
+        self.order_head = order_head
+        self.order_args = order_args
+        self.send(start, order_obj)     # 设置路径
+        self.itinerary.append(None)     # 路径结束后抛弃该帧
+
+    def send(self, start, end: str = None):
+        super(OrderFrame, self).send(start, end)
+
 class Model:
     """
     Worker 和 Node 的父类，暂时什么用也没有，仅为后续可能的拓展留下余地
@@ -110,6 +124,9 @@ class Worker(Model):
         :return:修改后的数据
         """
         return frame
+
+    def act(self, order_head, order_args):
+        pass
 
     def run(self, frame: Frame):
         """
@@ -202,6 +219,17 @@ class Node(Model):
             self.source = None
 
     def process(self, frame: Frame):
+        # 如果是OrderFrame
+        if isinstance(frame, OrderFrame):
+            # 先发送一次
+            frame.send(self.name)
+            # 如果不再发往其他地方
+            if frame.end is None:
+                if frame.order_head[0] == '_':
+                    self.act(frame.order_head, frame.order_args)
+                else:
+                    self.worker.act(frame.order_head, frame.order_args)
+            return [frame]
         if self.worker is not None:  # 如果Dot被指定工作，则执行worker的run
             frame = self.worker.run(frame)
             # 控制信息处理
@@ -237,6 +265,16 @@ class Node(Model):
                 c_frame.send(self.name, subsequent)
                 frames.append(c_frame)
         return frames
+
+    def act(self, order_head: str, order_args: list):
+        if order_head == '_sub':
+            self.subsequents = order_args
+        if order_head == '_close':
+            if self.worker is not None:
+                self.worker.switch = False
+        if order_head == '_open':
+            if self.worker is not None:
+                self.worker.switch = True
 
 
 class NodeSet(Node):

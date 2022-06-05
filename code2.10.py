@@ -1,8 +1,10 @@
 import pipeline.mul as mul
 import pipeline.core as core
+import flask
 
 
 if __name__ == '__main__':
+    app = flask.Flask('__name__')
     chart1 = core.NodeSet([
         core.Node('head1', ['node1']),
         core.Node('node1', ['node2']),
@@ -21,3 +23,10 @@ if __name__ == '__main__':
 
     chart = mul.MulIgnition([chart1, chart2])
     chart.run()
+
+
+    # @app.route('/')
+    # def get():
+    #     return str(chart.get().info['_NUMB'])
+    #
+    # app.run()

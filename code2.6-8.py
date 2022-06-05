@@ -1,5 +1,6 @@
 import cv2
 from pipeline.utils import *
+import pipeline
 
 
 class ReadCamera(Worker):
@@ -9,9 +10,12 @@ class ReadCamera(Worker):
 
     def __init__(self, name: str = 'camera', url: str = 0):
         super().__init__(name)
-        self.camera = cv2.VideoCapture(url)
+        self.url = url
+        self.camera = None
 
     def process(self, frame: Frame):
+        if self.camera is None:
+            self.camera = cv2.VideoCapture(self.url)
         # frame就是流经该组件的帧对象
         ret, img = self.camera.read()
         # 将读取到的图片放入 frame.data 的 'img' 的关键字下
@@ -71,27 +75,28 @@ class ChalkEffects(Worker):
         return frame
 
 
-if __name__ == '__main__':
-    mirror = NodeSet([
-        Node('node1', subsequents=['node2'], worker=ReadCamera()),
-        Node('node2', subsequents=['node3'], worker=Flip()),
-        Node('node3', worker=ShowImg())
-    ])
-
-    while mirror.switch:
-        mirror.run(Frame(end='node1'))
-
-# 代码2.7：
 # if __name__ == '__main__':
 #     mirror = NodeSet([
 #         Node('node1', subsequents=['node2'], worker=ReadCamera()),
-#         Node('node2', subsequents=['node4'], worker=Flip()),# 修改node2的后继
-#         Node('node4', subsequents=['node3'], worker=ChalkEffects())
+#         Node('node2', subsequents=['node3'], worker=Flip()),
 #         Node('node3', worker=ShowImg())
 #     ])
 #
 #     while mirror.switch:
 #         mirror.run(Frame(end='node1'))
+
+# 代码2.7：
+if __name__ == '__main__':
+    mirror = NodeSet([
+        Node('head', subsequents=['node1']),
+        Node('node1', subsequents=['node2'], worker=ReadCamera()),
+        Node('node2', subsequents=['node4'], worker=Flip()),    # 修改node2的后继
+        Node('node4', subsequents=['node3'], worker=ChalkEffects()),
+        Node('node3', worker=ShowImg())
+    ])
+    pipeline.mul.MulIgnition([mirror]).run()
+    # while mirror.switch:
+    #     mirror.run(Frame(end='node1'))
 
 # 代码2.8
 # if __name__ == '__main__':
