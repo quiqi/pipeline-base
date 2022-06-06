@@ -2,6 +2,6 @@ from setuptools import setup
 
 setup(
     name='pipeline',
-    version='3.0',
+    version='4.0',
     packages=['pipeline']
 )

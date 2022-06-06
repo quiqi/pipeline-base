@@ -227,7 +227,7 @@ class Node(Model):
             if frame.end is None:
                 if frame.order_head[0] == '_':
                     self.act(frame.order_head, frame.order_args)
-                else:
+                elif self.worker is not None:
                     self.worker.act(frame.order_head, frame.order_args)
             return [frame]
         if self.worker is not None:  # 如果Dot被指定工作，则执行worker的run
